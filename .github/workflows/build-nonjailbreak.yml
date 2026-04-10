@@ -17,64 +17,65 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Create Xcode Project
+    - name: Create iOS App Project
       run: |
-        mkdir -p CheatEngineApp
-        cd CheatEngineApp
-        cat > buildApp.sh << 'EOF'
-        #!/bin/bash
+        # Create app bundle structure
+        mkdir -p CheatEngine.app
         
-        # Create proper iOS App Bundle structure
-        APP_DIR="CheatEngine.app"
-        mkdir -p "$APP_DIR"
-        
-        # Copy and compile source files
-        clang -arch arm64 \
+        # Compile Objective-C code
+        clang -c \
+          -arch arm64 \
           -isysroot $(xcrun --sdk iphoneos --show-sdk-path) \
           -miphoneos-version-min=12.0 \
           -fno-objc-arc \
-          ../NonJailbreak/AppDelegate.mm \
-          -o "$APP_DIR/CheatEngine" \
+          -fobjc-runtime=ios-12.0 \
+          NonJailbreak/AppDelegate.mm \
+          -o AppDelegate.o
+        
+        # Link the binary
+        ld \
+          -arch arm64 \
+          -lSystem \
+          -lc++ \
           -framework UIKit \
           -framework Foundation \
-          -framework CoreGraphics
+          -framework CoreGraphics \
+          -isysroot $(xcrun --sdk iphoneos --show-sdk-path) \
+          -o CheatEngine.app/CheatEngine \
+          AppDelegate.o \
+          -undefined dynamic_lookup
         
-        # Copy resources
-        cp ../NonJailbreak/Info.plist "$APP_DIR/Info.plist"
+        # Copy Info.plist
+        cp NonJailbreak/Info.plist CheatEngine.app/Info.plist
         
+        # Create PkgInfo
+        echo "APPL????" > CheatEngine.app/PkgInfo
+    
+    - name: Create IPA Package
+      run: |
         # Create IPA structure
         mkdir -p Payload
-        mv "$APP_DIR" Payload/
+        cp -r CheatEngine.app Payload/
         
-        # Create IPA
-        zip -r CheatEngine.ipa Payload/
+        # Create IPA (just a zip)
+        cd Payload
+        zip -r ../CheatEngine.ipa .
+        cd ..
         
-        # Validate
+        # Verify IPA
         ls -lh CheatEngine.ipa
-        EOF
-        
-        chmod +x buildApp.sh
-        ./buildApp.sh
-    
-    - name: Sign app
-      run: |
-        cd CheatEngineApp
-        echo "App bundle created: CheatEngine.ipa"
-        file CheatEngine.ipa
         unzip -l CheatEngine.ipa | head -20
     
-    - name: Upload iOS App
+    - name: Upload iOS App IPA
       uses: actions/upload-artifact@v4
       with:
-        name: ios-app-ipa
-        path: CheatEngineApp/CheatEngine.ipa
+        name: CheatEngine-NonJailbreak
+        path: CheatEngine.ipa
         retention-days: 30
     
-    - name: Create Release Summary
+    - name: Success Summary
       run: |
-        echo "✅ Non-Jailbreak iOS App Built Successfully!"
-        echo ""
-        echo "📱 Installation:"
-        echo "1. Download CheatEngine.ipa"
-        echo "2. Install with SignKill or TrollStore"
-        echo "3. Works on ANY iOS device (no jailbreak needed!)"
+        echo "✅ CheatEngine.ipa created successfully!"
+        echo "📦 File size: $(ls -lh CheatEngine.ipa | awk '{print $5}')"
+        echo "📱 Install with: SignKill or TrollStore"
+        echo "🎯 Works on: Any iOS device (no jailbreak needed!)"
