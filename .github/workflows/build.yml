@@ -1,0 +1,41 @@
+name: Build Theos Tweak
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        brew install perl open-ssl
+    
+    - name: Clone Theos
+      run: |
+        git clone --recursive https://github.com/theos/theos.git ~/theos
+    
+    - name: Build project
+      env:
+        THEOS: ~/theos
+      run: |
+        export PATH=$PATH:~/theos/bin
+        make package FINALPACKAGE=1
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: compiled-deb
+        path: packages/
+        retention-days: 30
+    
+    - name: List output files
+      run: |
+        ls -la packages/ || echo "No packages directory found"
