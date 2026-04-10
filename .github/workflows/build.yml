@@ -16,7 +16,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        brew install perl openssl
+        brew install perl openssl ldid
     
     - name: Clone Theos
       run: |
