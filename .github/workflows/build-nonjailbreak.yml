@@ -5,77 +5,70 @@ on:
     branches: [ main ]
     paths:
       - 'NonJailbreak/**'
-      - 'KittyMemory/**'
-      - 'CustomView/**'
   workflow_dispatch:
 
 jobs:
-  build:
+  build-ipa:
     runs-on: macos-latest
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Create iOS App Project
+    - name: Create Simple IPA
       run: |
-        # Create app bundle structure
+        # Create app bundle
         mkdir -p CheatEngine.app
         
-        # Compile Objective-C code
-        clang -c \
+        # Compile the Objective-C app (minimal, no Theos)
+        xcrun clang \
           -arch arm64 \
           -isysroot $(xcrun --sdk iphoneos --show-sdk-path) \
           -miphoneos-version-min=12.0 \
+          -c NonJailbreak/AppDelegate.mm \
+          -o /tmp/app.o \
           -fno-objc-arc \
-          -fobjc-runtime=ios-12.0 \
-          NonJailbreak/AppDelegate.mm \
-          -o AppDelegate.o
+          -framework UIKit \
+          -framework Foundation
         
-        # Link the binary
-        ld \
+        # Link it
+        xcrun ld \
           -arch arm64 \
-          -lSystem \
-          -lc++ \
+          -dylib \
+          -o CheatEngine.app/CheatEngine \
+          /tmp/app.o \
+          -isysroot $(xcrun --sdk iphoneos --show-sdk-path) \
+          -lSystem -lc++ \
           -framework UIKit \
           -framework Foundation \
           -framework CoreGraphics \
-          -isysroot $(xcrun --sdk iphoneos --show-sdk-path) \
-          -o CheatEngine.app/CheatEngine \
-          AppDelegate.o \
           -undefined dynamic_lookup
         
-        # Copy Info.plist
-        cp NonJailbreak/Info.plist CheatEngine.app/Info.plist
-        
-        # Create PkgInfo
+        # Copy resources
+        cp NonJailbreak/Info.plist CheatEngine.app/
         echo "APPL????" > CheatEngine.app/PkgInfo
+        
+        # Verify
+        ls -la CheatEngine.app/
     
-    - name: Create IPA Package
+    - name: Package into IPA
       run: |
-        # Create IPA structure
+        # Create proper IPA structure
+        rm -rf Payload
         mkdir -p Payload
-        cp -r CheatEngine.app Payload/
+        mv CheatEngine.app Payload/
         
-        # Create IPA (just a zip)
-        cd Payload
-        zip -r ../CheatEngine.ipa .
-        cd ..
+        # Create IPA as zip
+        zip -r CheatEngine.ipa Payload/ -q
         
-        # Verify IPA
+        # Show results
         ls -lh CheatEngine.ipa
-        unzip -l CheatEngine.ipa | head -20
+        echo "✅ IPA created successfully"
+        unzip -l CheatEngine.ipa | head -15
     
-    - name: Upload iOS App IPA
+    - name: Upload IPA
       uses: actions/upload-artifact@v4
       with:
-        name: CheatEngine-NonJailbreak
+        name: CheatEngine.ipa
         path: CheatEngine.ipa
         retention-days: 30
-    
-    - name: Success Summary
-      run: |
-        echo "✅ CheatEngine.ipa created successfully!"
-        echo "📦 File size: $(ls -lh CheatEngine.ipa | awk '{print $5}')"
-        echo "📱 Install with: SignKill or TrollStore"
-        echo "🎯 Works on: Any iOS device (no jailbreak needed!)"
