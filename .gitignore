@@ -1,0 +1,27 @@
+# Ignore large files
+*.tar
+*.tar.gz
+*.zip
+*.rar
+*.7z
+
+# Ignore build artifacts
+.theos/
+packages/
+build/
+*.o
+*.a
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.xcodeproj/
+
+# Large directories
+Module/recup_dir.1/
